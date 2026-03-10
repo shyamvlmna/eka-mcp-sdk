@@ -123,6 +123,26 @@ def build_elicitation_response(
 
 
 
+def build_plain_availability_response(
+    doctor_id: str,
+    doctor_entry: Dict[str, Any],
+    doctor_details: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Build plain availability response without the doctor_card UI component.
+    Used for headless clients (whatsapp, telephone, voice mode).
+    """
+    return {
+        "doctor_id": doctor_id,
+        "doctor_name": doctor_details.get("name", ""),
+        "hospital_id": doctor_entry.get("hospital_id"),
+        "specialty": doctor_details.get("specialty", ""),
+        "availability": doctor_entry.get("availability", []),
+        "date_preference": doctor_entry.get("date_preference"),
+        "slot_preference": doctor_entry.get("slot_preference"),
+    }
+
+
 def _extract_clinic_address(clinic: Dict[str, Any]) -> Dict[str, str]:
     """Extract address fields from clinic, handling nested address structure."""
     # Try direct fields first

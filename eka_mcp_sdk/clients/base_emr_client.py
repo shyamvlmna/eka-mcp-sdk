@@ -131,12 +131,15 @@ class BaseEMRClient(BaseEkaClient):
         doctor_id: str,
         clinic_id: Optional[str] = None,
         preferred_date: Optional[str] = None,
-        preferred_slot_time: Optional[str] = None
+        preferred_slot_time: Optional[str] = None,
+        supports_elicitation: bool = True
     ) -> Dict[str, Any]:
         """
         Get doctor availability for appointment booking in UI contract format.
-        
+
         Returns doctor details, available dates, and slots with UI callbacks.
+        If supports_elicitation is False, returns plain availability data
+        without the doctor_card UI component.
         """
         pass
 
