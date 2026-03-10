@@ -11,7 +11,7 @@ from ..utils.enrichment_helpers import get_cached_data, extract_patient_summary,
 from ..clients.eka_emr_client import EkaEMRClient
 from ..auth.models import EkaAPIError
 from ..services.doctor_clinic_service import DoctorClinicService
-from ..utils.tool_registration import get_extra_headers
+from ..utils.tool_registration import get_extra_headers, get_supports_elicitation
 from ..services.appointment_service import AppointmentService
 from ..utils.workspace_utils import get_workspace_id
 from ..clients.client_factory import ClientFactory
@@ -543,7 +543,8 @@ def register_discovery_tools(mcp: FastMCP) -> None:
                 doctor_id=doctor_id,
                 clinic_id=hospital_id,
                 preferred_date=preferred_date,
-                preferred_slot_time=preferred_slot_time
+                preferred_slot_time=preferred_slot_time,
+                supports_elicitation=get_supports_elicitation()
             )
             
             await ctx.info(f"[doctor_availability_elicitation] Completed\n")

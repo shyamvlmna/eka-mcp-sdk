@@ -66,6 +66,18 @@ def get_extra_headers() -> Dict[str, str]:
         if key.lower().startswith('x-eka-'):
             extra_headers[key.lstrip('x-eka-')] = value
     return extra_headers
+
+
+def get_supports_elicitation() -> bool:
+    """
+    Read whether the client supports UI elicitation from request headers.
+
+    Clients set x-eka-supports-elicitation: false for headless flavours
+    (whatsapp, telephone, voice mode). Defaults to True.
+    """
+    headers = get_http_headers()
+    value = headers.get("x-eka-supports-elicitation", "true")
+    return value.lower() not in ("false", "0", "no")
             
 def create_tool_categories() -> Dict[str, List[str]]:
     """

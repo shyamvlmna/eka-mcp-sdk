@@ -92,18 +92,20 @@ class DoctorClinicService:
         doctor_id: str,
         clinic_id: Optional[str] = None,
         preferred_date: Optional[str] = None,
-        preferred_slot_time: Optional[str] = None
+        preferred_slot_time: Optional[str] = None,
+        supports_elicitation: bool = True
     ) -> Dict[str, Any]:
         """
         Get doctor availability for appointment booking in UI contract format.
-        
+
         Delegates to client which handles the orchestration logic.
-        
+
         Returns:
             UI contract with doctor_card component, availability, and callbacks
+            (or plain availability data if supports_elicitation is False)
         """
         return await self.client.doctor_availability_elicitation(
-            doctor_id, clinic_id, preferred_date, preferred_slot_time
+            doctor_id, clinic_id, preferred_date, preferred_slot_time, supports_elicitation
         )
     
     async def doctor_discovery(

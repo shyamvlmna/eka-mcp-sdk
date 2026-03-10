@@ -13,7 +13,8 @@ from ..utils.doctor_discovery_utils import (
     find_doctor_clinics,
     resolve_hospital_id,
     build_doctor_details_for_card,
-    build_elicitation_response
+    build_elicitation_response,
+    build_plain_availability_response
 )
 from ..utils.book_appointment_utils import (
     extract_all_slots_from_schedule,
@@ -311,7 +312,8 @@ class EkaEMRClient(BaseEMRClient):
         doctor_id: str,
         clinic_id: Optional[str] = None,
         preferred_date: Optional[str] = None,
-        preferred_slot_time: Optional[str] = None
+        preferred_slot_time: Optional[str] = None,
+        supports_elicitation: bool = True
     ) -> Dict[str, Any]:
         """
         Get doctor availability for appointment booking in UI contract format.
@@ -382,9 +384,12 @@ class EkaEMRClient(BaseEMRClient):
                 "doctor_name": doctor_profile.get("name", ""),
             }
         
-        # 8. Otherwise, build full elicitation response for user to select
+        # 8. Build response based on client capability
         doctor_details = build_doctor_details_for_card(doctor_profile, doctor_clinics)
-        response = build_elicitation_response(doctor_id, doctor_entry, doctor_details)
+        if supports_elicitation:
+            response = build_elicitation_response(doctor_id, doctor_entry, doctor_details)
+        else:
+            response = build_plain_availability_response(doctor_id, doctor_entry, doctor_details)
         response["slot_confirmed"] = False
         return response
     
