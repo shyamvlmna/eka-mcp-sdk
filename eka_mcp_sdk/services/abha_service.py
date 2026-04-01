@@ -5,9 +5,8 @@ each invoked by its own MCP tool call.
 """
 
 from typing import Any, Dict
+import base64
 import logging
-import os
-import tempfile
 
 from ..clients.abha_client import AbhaClient
 from ..auth.models import EkaAPIError
@@ -46,14 +45,22 @@ class AbhaService:
 
         if skip_state == "abha_select":
             abha_profiles = verify_response.get("abha_profiles", [])
+            profiles_summary = [
+                {
+                    "abha_address": p.get("abha_address", ""),
+                    "name": p.get("name", ""),
+                    "kyc_status": p.get("kyc_verified", "unknown"),
+                }
+                for p in abha_profiles
+            ]
             return {
                 "success": True,
                 "step": "select_profile",
                 "txn_id": new_txn_id,
-                "abha_profiles": abha_profiles,
+                "abha_profiles": profiles_summary,
                 "next_action": {
                     "tool": "abha_select_profile",
-                    "instruction": "Show the user the list of ABHA profiles above and ask them to pick one. Then call abha_select_profile with the chosen phr_address (abha_address) and the txn_id from this response.",
+                    "instruction": "Show the user the list of ABHA profiles in a table with columns: Name, ABHA Address, KYC Status. Then ask them to pick one. Call abha_select_profile with the chosen abha_address and the txn_id from this response.",
                 },
             }
 
@@ -74,7 +81,7 @@ class AbhaService:
         return await self._complete_login(phr_response)
 
     async def _complete_login(self, response: Dict[str, Any]) -> Dict[str, Any]:
-        """Extract profile and save ABHA card as a downloadable file."""
+        """Extract profile and fetch ABHA card as raw data."""
         eka = response.get("eka", {})
         oid = eka.get("oid")
         profile = response.get("profile", {})
@@ -84,28 +91,32 @@ class AbhaService:
                 "success": True,
                 "step": "complete",
                 "profile": profile,
-                "abha_card_file": None,
+                "abha_card": None,
                 "warning": "No OID returned, could not fetch ABHA card",
             }
 
-        card_file_path = None
+        abha_card = None
         try:
             card_bytes = await self.client.get_abha_card(oid)
             if card_bytes:
-                downloads_dir = os.path.expanduser("~/Downloads")
-                name = profile.get("first_name", "abha").lower()
-                card_file_path = os.path.join(downloads_dir, f"abha_card_{name}_{oid}.png")
-                with open(card_file_path, "wb") as f:
-                    f.write(card_bytes)
-        except EkaAPIError as e:
-            logger.warning(f"Failed to fetch ABHA card: {e.message}")
-        except OSError as e:
-            logger.warning(f"Failed to save ABHA card: {e}")
+                abha_card = {
+                    "data": base64.b64encode(card_bytes).decode("utf-8"),
+                    "content_type": "image/png",
+                }
+        except Exception as e:
+            logger.warning(f"Failed to fetch ABHA card: {e}")
 
-        return {
+        result = {
             "success": True,
             "step": "complete",
             "profile": profile,
-            "abha_card_file": card_file_path,
+            "abha_card": abha_card,
             "oid": oid,
         }
+
+        if abha_card:
+            result["next_action"] = {
+                "instruction": "IMPORTANT: The ABHA card image has already been fetched and is included in the abha_card field of this response as base64-encoded PNG data. Show the user their ABHA profile details AND inform them that their ABHA card is available, render the card data and show the abha card to them without asking. Also offer to download and save the card. Do NOT call any additional tools to fetch the card — it is already here.",
+            }
+
+        return result
