@@ -1,9 +1,8 @@
 """Unit tests for AbhaService login flow orchestration."""
 
 import asyncio
-import os
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from eka_mcp_sdk.services.abha_service import AbhaService
 from eka_mcp_sdk.clients.abha_client import AbhaClient
 
@@ -31,8 +30,8 @@ VERIFY_RESPONSE_ABHA_SELECT = {
     "skip_state": "abha_select",
     "profile": {},
     "abha_profiles": [
-        {"abha_address": "alice@abdm", "name": "Alice"},
-        {"abha_address": "bob@abdm", "name": "Bob"},
+        {"abha_address": "alice@abdm", "name": "Alice", "kyc_verified": "verified"},
+        {"abha_address": "bob@abdm", "name": "Bob", "kyc_verified": "pending"},
     ],
     "eka": {},
     "hint": "",
@@ -66,22 +65,21 @@ class TestSendOtp:
 
 
 class TestVerifyOtpAbhaEnd:
-    def test_single_profile_returns_complete(self, tmp_path):
+    def test_single_profile_returns_complete(self):
         client = make_mock_client()
         client.login_verify.return_value = VERIFY_RESPONSE_ABHA_END
         client.get_abha_card.return_value = FAKE_CARD
 
         service = AbhaService(client)
-        with patch("eka_mcp_sdk.services.abha_service.os.path.expanduser", return_value=str(tmp_path)):
-            result = asyncio.run(service.verify_otp("123456", "txn-123"))
+        result = asyncio.run(service.verify_otp("123456", "txn-123"))
 
         client.login_verify.assert_called_once_with("123456", "txn-123")
         client.get_abha_card.assert_called_once_with("oid-1")
         assert result["success"] is True
         assert result["step"] == "complete"
         assert result["profile"]["abha_number"] == "1234"
-        assert result["abha_card_file"] is not None
-        assert os.path.exists(result["abha_card_file"])
+        assert result["abha_card"]["content_type"] == "image/png"
+        assert result["abha_card"]["data"] is not None
 
 
 class TestVerifyOtpAbhaSelect:
@@ -96,6 +94,8 @@ class TestVerifyOtpAbhaSelect:
         assert result["step"] == "select_profile"
         assert result["txn_id"] == "txn-456"
         assert len(result["abha_profiles"]) == 2
+        assert result["abha_profiles"][0]["kyc_verified"] == "verified"
+        assert result["abha_profiles"][1]["kyc_verified"] == "pending"
         assert result["next_action"]["tool"] == "abha_select_profile"
         client.get_abha_card.assert_not_called()
 
@@ -117,18 +117,17 @@ class TestVerifyOtpAbhaCreate:
 
 
 class TestSelectProfile:
-    def test_selects_profile_and_returns_complete(self, tmp_path):
+    def test_selects_profile_and_returns_complete(self):
         client = make_mock_client()
         client.login_phr.return_value = LOGIN_PHR_RESPONSE
         client.get_abha_card.return_value = FAKE_CARD
 
         service = AbhaService(client)
-        with patch("eka_mcp_sdk.services.abha_service.os.path.expanduser", return_value=str(tmp_path)):
-            result = asyncio.run(service.select_profile("alice@abdm", "txn-456"))
+        result = asyncio.run(service.select_profile("alice@abdm", "txn-456"))
 
         client.login_phr.assert_called_once_with("alice@abdm", "txn-456")
         client.get_abha_card.assert_called_once_with("oid-2")
         assert result["success"] is True
         assert result["step"] == "complete"
         assert result["profile"]["abha_address"] == "alice@abdm"
-        assert result["abha_card_file"] is not None
+        assert result["abha_card"]["content_type"] == "image/png"

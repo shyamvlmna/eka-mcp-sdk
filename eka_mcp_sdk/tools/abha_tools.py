@@ -37,7 +37,10 @@ def register_abha_tools(mcp: FastMCP) -> None:
 
         Trigger Keywords / Phrases
         abha login, abdm login, health id login, abha mobile login,
-        link abha, connect abdm, ayushman bharat login
+        link abha, connect abdm, ayushman bharat login,
+        create abha, abha create, create health id, health id create,
+        register abha, abha registration, new abha, get abha,
+        abha card, download abha card, fetch abha card
         """
         await ctx.info(f"[abha_send_otp] Sending OTP to {mobile_number}")
         try:
@@ -58,11 +61,15 @@ def register_abha_tools(mcp: FastMCP) -> None:
 
         Pass the txn_id from abha_send_otp and the OTP the user provided.
 
-        If the response status is "select_profile", present the abha_profiles
-        list to the user and call abha_select_profile with their choice.
+        If the response step is "select_profile", present the abha_profiles
+        list to the user as a table showing Name, ABHA Address, and KYC Status
+        for each profile. Then call abha_select_profile with their chosen
+        abha_address.
 
-        If the response status is "complete", the login is done and the
-        profile and ABHA card are returned.
+        If the response step is "complete", the login is done. The profile
+        and ABHA card (base64 PNG in abha_card field) are already included
+        in the response. Show the profile and inform the user their ABHA
+        card is available. Do NOT make additional tool calls to fetch the card.
         """
         await ctx.info(f"[abha_verify_otp] Verifying OTP for txn: {txn_id}")
         try:
@@ -85,7 +92,9 @@ def register_abha_tools(mcp: FastMCP) -> None:
         Pass the phr_address the user selected from the abha_profiles list
         and the txn_id from that response.
 
-        Returns the completed profile and ABHA card.
+        Returns the completed profile and ABHA card (base64 PNG in abha_card
+        field). Show the profile and inform the user their ABHA card is
+        available. Do NOT make additional tool calls to fetch the card.
         """
         await ctx.info(f"[abha_select_profile] Selecting profile: {phr_address}")
         try:
